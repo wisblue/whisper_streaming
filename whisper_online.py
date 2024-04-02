@@ -111,11 +111,7 @@ class FasterWhisperASR(ASRBase):
 
 
         # this worked fast and reliably on NVIDIA L40
-        model = WhisperModel(model_size_or_path, 
-                             device="cuda", 
-                             compute_type="float16", 
-                             download_root=cache_dir,
-                             local_files_only=True)
+        model = WhisperModel(model_size_or_path, device="cuda", compute_type="float16", download_root=cache_dir)
 
         # or run on GPU with INT8
         # tested: the transcripts were different, probably worse than with FP16, and it was slightly (appx 20%) slower
@@ -313,13 +309,9 @@ class OnlineASRProcessor:
 
     def __init__(self, asr, tokenizer=None, buffer_trimming=("segment", 15), logfile=sys.stderr):
         """asr: WhisperASR object
-        tokenizer: sentence tokenizer object for the target language. 
-        Must have a method *split* that behaves like the one of MosesTokenizer. 
-        It can be None, if "segment" buffer trimming option is used, then tokenizer is not used at all.
+        tokenizer: sentence tokenizer object for the target language. Must have a method *split* that behaves like the one of MosesTokenizer. It can be None, if "segment" buffer trimming option is used, then tokenizer is not used at all.
         ("segment", 15)
-        buffer_trimming: a pair of (option, seconds), where option is either "sentence" or "segment", 
-        and seconds is a number. Buffer is trimmed if it is longer than "seconds" threshold. 
-        Default is the most recommended option.
+        buffer_trimming: a pair of (option, seconds), where option is either "sentence" or "segment", and seconds is a number. Buffer is trimmed if it is longer than "seconds" threshold. Default is the most recommended option.
         logfile: where to store the log. 
         """
         self.asr = asr
@@ -365,10 +357,7 @@ class OnlineASRProcessor:
         Returns: a tuple (beg_timestamp, end_timestamp, "text"), or (None, None, ""). 
         The non-emty text is confirmed (committed) partial transcript.
         """
-        if len(self.audio_buffer) == 0:
-            # print("process_iter: zero length buffer.")
-            return (None, None, "", None)
-        
+
         prompt, non_prompt = self.prompt()
         print("PROMPT:", prompt, file=self.logfile)
         print("CONTEXT:", non_prompt, file=self.logfile)
@@ -413,10 +402,6 @@ class OnlineASRProcessor:
         return self.to_flush(o)
 
     def chunk_completed_sentence(self):
-        """
-        This is to be called when the buffer is longer than the threshold 
-        and the buffer trimming is set to "sentence".
-        """
         if self.commited == []: return
         print(self.commited,file=self.logfile)
         sents = self.words_to_sentences(self.commited)
@@ -433,9 +418,6 @@ class OnlineASRProcessor:
         self.chunk_at(chunk_at)
 
     def chunk_completed_segment(self, res):
-        """
-        This is to be called when the buffer is longer than the threshold.
-        """
         if self.commited == []: return
 
         ends = self.asr.segments_end_ts(res)
@@ -455,6 +437,9 @@ class OnlineASRProcessor:
                 print(f"--- last segment not within commited area",file=self.logfile)
         else:
             print(f"--- not enough segments to chunk",file=self.logfile)
+
+
+
 
 
     def chunk_at(self, time):
@@ -511,15 +496,10 @@ class OnlineASRProcessor:
         if len(sents) == 0:
             b = None
             e = None
-            complete = None
         else:
             b = offset + sents[0][0]
             e = offset + sents[-1][1]
-            complete= e >= self.duration()
-        return (b,e,t, complete)
-    
-    def duration(self):
-        return len(self.audio_buffer)/self.SAMPLING_RATE
+        return (b,e,t)
 
 WHISPER_LANG_CODES = "af,am,ar,as,az,ba,be,bg,bn,bo,br,bs,ca,cs,cy,da,de,el,en,es,et,eu,fa,fi,fo,fr,gl,gu,ha,haw,he,hi,hr,ht,hu,hy,id,is,it,ja,jw,ka,kk,km,kn,ko,la,lb,ln,lo,lt,lv,mg,mi,mk,ml,mn,mr,ms,mt,my,ne,nl,nn,no,oc,pa,pl,ps,pt,ro,ru,sa,sd,si,sk,sl,sn,so,sq,sr,su,sv,sw,ta,te,tg,th,tk,tl,tr,tt,uk,ur,uz,vi,yi,yo,zh".split(",")
 

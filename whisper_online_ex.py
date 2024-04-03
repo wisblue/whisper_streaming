@@ -56,9 +56,9 @@ class OnlineASRProcessorEx(OnlineASRProcessor):
         """
 
         prompt, non_prompt = self.prompt()
-        # print("PROMPT:", prompt, file=self.logfile)
-        # print("CONTEXT:", non_prompt, file=self.logfile)
-        # print(f"transcribing {len(self.audio_buffer)/self.SAMPLING_RATE:2.2f} seconds from {self.buffer_time_offset:2.2f}",file=self.logfile)
+        print("PROMPT:", prompt, file=self.logfile)
+        print("CONTEXT:", non_prompt, file=self.logfile)
+        print(f"transcribing {len(self.audio_buffer)/self.SAMPLING_RATE:2.2f} seconds from {self.buffer_time_offset:2.2f}",file=self.logfile)
         res = self.asr.transcribe(self.audio_buffer, init_prompt=prompt)
 
         # transform to [(beg,end,"word1"), ...]
@@ -67,8 +67,9 @@ class OnlineASRProcessorEx(OnlineASRProcessor):
         self.transcript_buffer.insert(tsw, self.buffer_time_offset)
         o = self.transcript_buffer.flush()
         self.commited.extend(o)
-        # print(">>>>COMPLETE NOW:",self.to_flush(o),file=self.logfile,flush=True)
-        # print("INCOMPLETE:",self.to_flush(self.transcript_buffer.complete()),file=self.logfile,flush=True)
+        print(">>>>COMPLETE NOW:",self.to_flush(o),file=self.logfile,flush=True)
+        o2 = self.transcript_buffer.complete()
+        print("INCOMPLETE:",self.to_flush(o2),file=self.logfile,flush=True)
 
         # there is a newly confirmed text
 
@@ -97,12 +98,14 @@ class OnlineASRProcessorEx(OnlineASRProcessor):
 
         print(f"len of buffer now: {len(self.audio_buffer)/self.SAMPLING_RATE:2.2f}",file=self.logfile)
         o = self.to_flush(o)
+        o2 = self.to_flush(o2)
         if o[0] is not None:
-            return (o[0],o[1],o[2], stream_close)
-        elif stream_close:
+            return (o[0],o[1],o[2], False)
+        elif o[1] is None and o[2] == '' \
+            and o2[0] is None and o2[1] is None and o2[2] == '':
             return (self.buffer_time_offset, 
                     len(self.audio_buffer)/self.SAMPLING_RATE, 
                     non_prompt,
-                    stream_close)
+                    True)
         else:
             return (None, None, "", False)
